@@ -1,0 +1,122 @@
+require 'veewee/provider/virtualbox/box/export_vagrant'
+Veewee::Config.run do |config|
+	# we're going to do our own export to pull down the extra
+	# interface required to get this going
+	# Unfortunately we'll be duping some code :(
+	# just enough to get the box shutdown so we can unplumb
+	# the interface
+	::Veewee::Provider::Virtualbox::BoxCommand.class_eval do
+		alias_method :old_export_vagrant, :export_vagrant
+		def export_vagrant(options)
+			# Check if box already exists
+			unless self.exists?
+				ui.info "#{name} is not found, maybe you need to build it first?"
+				exit
+			end
+
+			if File.exists?("#{name}.box")
+				if options["force"]
+					env.logger.debug("#{name}.box exists, but --force was provided")
+					env.logger.debug("removing #{name}.box first")
+					FileUtils.rm("#{name}.box")
+					env.logger.debug("#{name}.box removed")
+				else
+					raise Veewee::Error, "export file #{name}.box already exists. Use --force option to overwrite."
+				end
+			end
+
+
+			# We need to shutdown first
+			if self.running?
+				ui.info "Vagrant requires the box to be shutdown, before it can export"
+				ui.info "Sudo also needs to work for user #{definition.ssh_user}"
+				ui.info "Performing a clean shutdown now."
+
+				self.halt
+
+				#Wait for state poweroff
+				while (self.running?) do
+					ui.info ".",{:new_line => false}
+					sleep 1
+				end
+				ui.info ""
+				ui.info "Machine #{name} is powered off cleanly"
+			end
+
+			unless definition.virtualbox[:vm_options][0].nil?
+				definition.virtualbox[:vm_options][0].each do |vm_flag,vm_flag_value|
+					if vm_flag == :nic2
+						ui.info "Pulling down second interface"
+						command="#{@vboxcmd} modifyvm #{name} --nic2 none"
+						shell_exec("#{command}")
+						break
+					end
+				end
+			end
+
+			old_export_vagrant(options)
+		end
+	end
+end
+#Veewee::Config.run do |config|
+#	require 'veewee/provider/virtualbox/box/export_vagrant'
+#
+#	Module Veewee::Provider::Virtualbox::BoxCommand
+#		# we're going to do our own export to pull down the extra
+#		# interface required to get this going
+#		# Unfortunately we'll be duping some code :(
+#		# just enough to get the box shutdown so we can unplumb
+#		# the interface
+#
+#		# see http://stackoverflow.com/questions/13928494/monkey-patch-module-method
+#		class<< self
+#			alias_method :old_export_vagrant, :export_vagrant
+#
+#			def export_vagrant(options)
+#				# Check if box already exists
+#				unless self.exists?
+#					ui.info "#{name} is not found, maybe you need to build it first?"
+#					exit
+#				end
+#
+#				if File.exists?("#{name}.box")
+#					if options["force"]
+#						env.logger.debug("#{name}.box exists, but --force was provided")
+#						env.logger.debug("removing #{name}.box first")
+#						FileUtils.rm("#{name}.box")
+#						env.logger.debug("#{name}.box removed")
+#					else
+#						raise Veewee::Error, "export file #{name}.box already exists. Use --force option to overwrite."
+#					end
+#				end
+#
+#
+#				# We need to shutdown first
+#				if self.running?
+#					ui.info "Vagrant requires the box to be shutdown, before it can export"
+#					ui.info "Sudo also needs to work for user #{definition.ssh_user}"
+#					ui.info "Performing a clean shutdown now."
+#
+#					self.halt
+#
+#					#Wait for state poweroff
+#					while (self.running?) do
+#						ui.info ".",{:new_line => false}
+#						sleep 1
+#					end
+#					ui.info ""
+#					ui.info "Machine #{name} is powered off cleanly"
+#				end
+#
+#				unless definition.virtualbox[:vm_options][:nic2].nil?
+#					command="#{@vboxcmd} modifyvm #{name} --nic2 none"
+#					shell_exec("#{command}")
+#				end
+#
+#				old_export_vagrant, options
+#			end #export_vagrant
+#		end #Class
+#	end #Module
+#end
+#
+## vim: ft=ruby
