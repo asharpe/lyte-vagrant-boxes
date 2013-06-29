@@ -12,7 +12,7 @@ Veewee::Session.declare({
       :natdnshostresolver1 => 'on',
       :nic2 => 'hostonly',
       :nictype2 => '82540EM',
-		:cableconnected2 => 'on',
+      :cableconnected2 => 'on',
       :hostonlyadapter2 => 'vboxnet0',
     ]
   },
@@ -23,7 +23,8 @@ Veewee::Session.declare({
   :iso_md5 => "e9625e2c3b4b02d94ffa478773d5d58f",
   :iso_download_timeout => 1000,
   :boot_wait => "15",
-  :boot_cmd_sequence => [ '<Tab> text ks=http://host.local.vm:%PORT%/ks.cfg.erb ksdevice=eth1<Enter>' ],
+  :boot_cmd_sequence => [ '<Tab> text ks=http://10.13.0.1:%PORT%/ks.cfg.erb ksdevice=eth1<Enter>' ],
+#  :boot_cmd_sequence => [ '<Tab> text ks=http://host.local.vm:%PORT%/ks.cfg.erb ksdevice=eth1<Enter>' ],
   :kickstart_file => "ks.cfg.erb",
   :kickstart_port => "7122",
   :kickstart_timeout => 10000,
@@ -39,10 +40,11 @@ Veewee::Session.declare({
     "base.sh",
     "vagrant.sh",
 #    "virtualbox.sh",
-    "cleanup.sh"
+    "network.sh",
+    "cleanup.sh",
   ],
   :postinstall_timeout => 10000,
   :params => {
-    :proxy => 'http://host.local.vm:3142'
+    :proxy => 'http://10.13.0.1:3142'
   },
 })
